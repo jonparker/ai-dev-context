@@ -177,6 +177,26 @@ These tools solve adjacent problems and work well alongside this system:
 
 ---
 
+## Testing
+
+The scripts are thoroughly tested with automated unit and integration tests. See [`tests/README.md`](tests/README.md) for details.
+
+**Run tests locally:**
+```bash
+cd tests
+./run-tests.sh  # Requires BATS (brew install bats-core)
+```
+
+**CI/CD Pipeline:**
+- ✅ Linting with ShellCheck
+- ✅ Bash syntax validation
+- ✅ 36+ automated tests
+- ✅ Integration tests on Ubuntu
+
+See [`docs/CI_CD.md`](docs/CI_CD.md) for complete CI/CD documentation.
+
+---
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for open problems worth solving.
