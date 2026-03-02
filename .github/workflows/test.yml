@@ -1,0 +1,149 @@
+name: Test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/**'
+      - 'tests/**'
+      - '.github/workflows/test.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/**'
+      - 'tests/**'
+      - '.github/workflows/test.yml'
+
+jobs:
+  test:
+    name: Run BATS tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install BATS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y bats
+
+      - name: Verify dependencies
+        run: |
+          echo "Checking dependencies..."
+          bash --version
+          git --version
+          python3 --version
+          diff --version
+
+      - name: Make scripts executable
+        run: |
+          chmod +x scripts/*.sh
+          chmod +x tests/run-tests.sh
+
+      - name: Run tests
+        run: |
+          cd tests
+          ./run-tests.sh
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Make scripts executable
+        run: chmod +x scripts/*.sh
+
+      - name: Setup test environment
+        run: |
+          mkdir -p ~/.config/ai
+          cat > ~/.config/ai/context.md <<EOF
+          # Test Context
+          Machine: GitHub Actions Runner
+          OS: Ubuntu
+          EOF
+
+      - name: Test ai-config-sync.sh
+        run: |
+          cd /tmp
+          mkdir test-project
+          cd test-project
+          git init
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          git remote add origin https://github.com/test/test-repo.git
+          
+          $GITHUB_WORKSPACE/scripts/ai-config-sync.sh --all .
+          
+          # Verify outputs
+          test -f .claude/CLAUDE.md
+          test -f .cursorrules
+          test -f .windsurfrules
+          test -f .clinerules
+          test -f .github/copilot-instructions.md
+          test -f AGENTS.md
+          
+          echo "✓ ai-config-sync.sh integration test passed"
+
+      - name: Test ai-memory-link.sh
+        run: |
+          cd /tmp
+          mkdir test-project-2
+          cd test-project-2
+          git init
+          git config user.email "test@example.com"
+          git config user.name "Test User"
+          git remote add origin https://github.com/test/memory-test.git
+          
+          $GITHUB_WORKSPACE/scripts/ai-memory-link.sh .
+          
+          # Verify outputs
+          test -f ~/.config/ai/projects/memory-test.md
+          
+          # Verify symlink
+          encoded_path=$(pwd | sed 's|/|-|g')
+          test -L ~/.claude/projects/${encoded_path}/memory/MEMORY.md
+          
+          echo "✓ ai-memory-link.sh integration test passed"
+
+      - name: Test review-memory-write.sh JSON parsing
+        run: |
+          # Test JSON parsing capability
+          echo '{"hook_event_name": "PreToolUse", "tool_input": {"file_path": "/tmp/test.txt"}}' | \
+            $GITHUB_WORKSPACE/scripts/review-memory-write.sh
+          
+          echo "✓ review-memory-write.sh JSON parsing test passed"
+
+  shellcheck-verify:
+    name: Verify ShellCheck still passes
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run ShellCheck
+        uses: ludeeus/action-shellcheck@2.0.0
+        with:
+          scandir: scripts
+          severity: warning
+        env:
+          SHELLCHECK_OPTS: --shell=bash --exclude=SC1090,SC1091
+
+  syntax-verify:
+    name: Verify bash syntax
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check syntax
+        run: |
+          bash -n scripts/ai-config-sync.sh
+          bash -n scripts/ai-memory-link.sh
+          bash -n scripts/review-memory-write.sh
+          echo "✓ All scripts have valid bash syntax"
