@@ -151,6 +151,8 @@ cp /path/to/ai-dev-context/templates/settings.json .claude/settings.json
 
 The `templates/settings.json` file registers the hook for both `PreToolUse` (backup) and `PostToolUse` (review). If your project already has a `.claude/settings.json`, merge the `hooks` block in manually.
 
+**Dependencies:** `python3` (for JSON parsing), `diff` (from diffutils — standard on any Linux/macOS install).
+
 ---
 
 ## Complementary tools

@@ -16,18 +16,21 @@ BACKUP_DIR="${TMPDIR:-/tmp}/ai-memory-review"
 
 INPUT="$(cat)"
 
-# Extract a JSON string value by key name using only grep and sed.
-# Matches the first occurrence of "key": "value" anywhere in the JSON.
-# Sufficient for simple string values (hook event names, file paths).
+# Parse a value from the JSON input by dot-separated key path.
+# Requires python3 (standard on macOS and Linux).
 parse() {
-    printf '%s\n' "$INPUT" \
-        | grep -o "\"$1\"[[:space:]]*:[[:space:]]*\"[^\"]*\"" \
-        | head -1 \
-        | sed 's/.*:[[:space:]]*"\(.*\)"/\1/'
+    export PARSE_KEY="$1"
+    printf '%s\n' "$INPUT" | python3 -c "
+import sys, json, os
+d = json.load(sys.stdin)
+for k in os.environ['PARSE_KEY'].split('.'):
+    d = d.get(k, '') if isinstance(d, dict) else ''
+print(d if isinstance(d, str) else '')
+" 2>/dev/null || true
 }
 
 hook_event="$(parse 'hook_event_name')"
-file_path="$(parse 'file_path')"
+file_path="$(parse 'tool_input.file_path')"
 
 # --- Only act on MEMORY.md files ---
 
